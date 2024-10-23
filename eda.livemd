@@ -1,0 +1,78 @@
+# Exploratory Data Analysis with Elixir's Explorer
+
+## Exploratory Data Analysis using explorer
+
+This is a project to manipulate a dataset using Explorer
+
+```elixir
+#Install kino explorer for data analysis and display
+Mix.install([
+  {:kino_explorer, "~> 0.1.20"},
+])
+```
+
+```elixir
+require Explorer.DataFrame, as: DF
+alias Explorer.Series
+```
+
+```elixir
+# Load dataframe from csv
+df = DF.from_csv!("~/Downloads/world_population.csv")
+DF.describe(df)
+```
+
+```elixir
+# Display data types of dataframe's column
+DF.dtypes(df)
+```
+
+```elixir
+# Display the top five rows
+DF.head(df)
+```
+
+```elixir
+# Display the last five rows
+DF.tail(df)
+```
+
+```elixir
+# Display nil element per column
+DF.nil_count(df)
+```
+
+```elixir
+# Display how many times each row is duplicated
+DF.frequencies(df, DF.names(df))
+```
+
+```elixir
+# Check distinct value per column
+df
+|> DF.names()
+|> Enum.map(fn col -> {col, Series.n_distinct(df[col])} end)
+|> Enum.into(%{})
+```
+
+```elixir
+# Sort by growth rate in descending order
+DF.sort_by(df, desc: col("Growth Rate"))
+```
+
+```elixir
+# Display correlation from column to column
+DF.correlation(df)
+```
+
+```elixir
+# Group by continent and compute the mean of each column
+df = 
+  df
+  |> DF.group_by("Continent")
+  |> DF.mutate(for col <- across(), col.dtype !== :string do
+    {col.name, mean(col)}
+  end)
+  |> DF.distinct(["Continent"], keep_all: true)
+  |> DF.discard(["Country", "Capital", "CCA3"])
+```

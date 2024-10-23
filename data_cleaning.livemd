@@ -1,0 +1,141 @@
+# Data Cleaning using Explorer
+
+```elixir
+#Install kino explorer for data analysis and display
+Mix.install([
+  {:kino_explorer, "~> 0.1.20"},
+])
+```
+
+## Data Cleaning using Explorer
+
+This is a project to clean a customer dataset using Explorer
+
+```elixir
+#Install kino explorer for data analysis and display
+Mix.install([
+  {:kino_explorer, "~> 0.1.20"},
+])
+```
+
+```elixir
+require Explorer.DataFrame, as: DF
+alias Explorer.Series
+```
+
+```elixir
+# Load dataframe from csv
+df = DF.from_csv!("~/Downloads/Customer_Call_List.csv")
+df
+```
+
+```elixir
+# Display data types of dataframe
+DF.dtypes(df)
+```
+
+```elixir
+# Describe dataframe
+DF.describe(df)
+```
+
+```elixir
+# Display shape of dataframe
+DF.shape(df)
+```
+
+```elixir
+# Remove duplicated rows
+df = DF.distinct(df, DF.names(df))
+df
+```
+
+```elixir
+# Check shape of dataframe after remove duplicates
+DF.shape(df)
+```
+
+```elixir
+df = DF.discard(df, ["Not_Useful_Column"])
+```
+
+```elixir
+# Clean last_name to remove special characters and fill empty spaces
+last_name = Series.transform(df["Last_Name"], fn last_name ->
+  if is_nil(last_name), do: "", else: String.replace(last_name, ~r/[^a-zA-Z]+/, "") 
+end)
+
+df = DF.mutate(df, Last_Name: ^last_name)
+df
+```
+
+```elixir
+# Clean phone numbers to have the same structure
+phone_number =
+  Series.transform(df["Phone_Number"], fn phone_number -> 
+    if is_nil(phone_number) || phone_number === "N/a" do 
+      "" 
+    else 
+      string_phone_number = phone_number |> String.replace(~r/[^0-9]+/, "")
+      Regex.replace(~r/(\d{3})(\d{3})(\d{4})/, string_phone_number, "\\1-\\2-\\3")
+    end
+  end)
+
+df = DF.mutate(df, Phone_Number: ^phone_number)
+df
+```
+
+```elixir
+# Change Yes to Y and No to N for paying_customer
+paying_customer = 
+  df["Paying Customer"]
+  |> Series.transform(fn paying_customer -> 
+      if paying_customer === "No" do 
+        "N"
+      else
+        paying_customer
+      end
+    end)
+  |> Series.transform(fn paying_customer -> 
+      if paying_customer === "Yes" do 
+        "Y"
+      else
+        paying_customer
+      end
+    end)
+
+df = DF.mutate(df, "Paying Customer": ^paying_customer)
+```
+
+```elixir
+# Change Yes to Y and No to N for do not contact
+do_not_contact = 
+  df["Do_Not_Contact"]
+  |> Series.transform(fn do_not_contact -> 
+      if do_not_contact === "No" do 
+        "N"
+      else
+        do_not_contact
+      end
+    end)
+  |> Series.transform(fn do_not_contact -> 
+      if do_not_contact === "Yes" do 
+        "Y"
+      else
+        do_not_contact
+      end
+    end)
+
+df = DF.mutate(df, Do_Not_Contact: ^do_not_contact)
+```
+
+```elixir
+#Split address into multiple columns
+
+street_address = Series.transform(df["Address"], fn address -> address |> String.split(",") |> Enum.at(0) end)
+state = Series.transform(df["Address"], fn address -> address |> String.split(",") |> Enum.at(1) end)
+zip_code = Series.transform(df["Address"], fn address -> address |> String.split(",") |> Enum.at(2) end)
+
+DF.mutate(df, street_address: ^street_address, state: ^state, zip_code: ^zip_code) |> DF.tail
+# DF.mutate_with(df, &[street_address: Series.transform(&1["a"], &1["b"]), State: Series.add(&1["a"], &1["b"]), Zip_Code: Series.add(&1["a"], &1["b"])])
+```
